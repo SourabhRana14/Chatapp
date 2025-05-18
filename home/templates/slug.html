@@ -1,0 +1,160 @@
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+<style>
+    /* General Page Styling */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Chat Room Styling */
+#chat-messages {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 20px;
+    height: 400px;
+    overflow-y: scroll;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.chat-message {
+    margin-bottom: 10px;
+}
+
+.chat-message.server-message {
+    background-color: #e6f7ff; /* Light Blue for server messages */
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.chat-message.client-message {
+    background-color: #cfe2ff; /* Light Blue for client messages */
+    padding: 10px;
+    border-radius: 8px;
+    text-align: right;
+}
+
+/* Input and Button Styling */
+form {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+#message-input {
+    flex-grow: 1;
+    padding: 12px;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+#send-message {
+    padding: 12px 20px;
+    background-color: #007bff;
+    border: none;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+#send-message:hover {
+    background-color: #0056b3;
+}
+
+/* Styling for the Chat Room Header */
+h1 {
+    text-align: center;
+    font-size: 2rem;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+</style>
+
+{{slug.room_name}}
+
+
+<div id="chat-messages">
+
+    {% for message in message %}
+    <div class="chat-message server-message">{{ message.message_content }}</div>
+{% endfor %}
+
+</div>
+        <form action="" method="post">
+            {% csrf_token %}
+            <input type="text" value="" id="message-input" placeholder="Enter Message">
+            <input type="submit" id="send-message" value="Send">
+        </form>
+
+
+        {{slug.slug| json_script:"json_chatroom"}}
+
+
+        <script>
+            const room_name = JSON.parse(document.getElementById('json_chatroom').textContent);
+
+            // console.log(room_name)
+
+           const chatSocket = new WebSocket(
+            'ws://' + window.location.host + '/ws/' + room_name + '/'
+
+        
+           );
+
+           chatSocket.onmessage=function(e){
+
+            const data = JSON.parse(e.data)
+            if(data.message){
+                const messageDiv = document.createElement('div')
+                messageDiv.classList.add('chat-message','client-message')
+                messageDiv.textContent = data.message
+                document.getElementById('chat-messages').appendChild(messageDiv)
+            }
+            console.log("Connected")
+           };
+
+
+          document.getElementById('send-message').onclick=function(e){
+        
+            e.preventDefault()
+            var messageinput = document.getElementById('message-input');
+            var message = messageinput.value;
+            console.log(message)
+
+
+            chatSocket.send(JSON.stringify({
+                'message':message,
+                'room':room_name
+            }))
+
+            messageinput.value=""
+          }
+
+
+           chatSocket.onclose=function(e){
+            console.log("Socket closed")
+           }
+
+           chatSocket.onerror=function(e){
+            console.log("Socket error",e)
+           }
+            
+        </script>
+
+
+
+
+{% endblock content %}
